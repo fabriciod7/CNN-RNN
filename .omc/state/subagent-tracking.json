@@ -1,0 +1,35 @@
+{
+  "agents": [
+    {
+      "agent_id": "a7cca9bf408a5b9f2",
+      "agent_type": "oh-my-claudecode:executor",
+      "started_at": "2026-09-22T19:38:36.774Z",
+      "parent_mode": "none",
+      "status": "completed",
+      "completed_at": "2026-09-22T19:51:39.108Z",
+      "duration_ms": 782334
+    },
+    {
+      "agent_id": "afeead588bb3831f4",
+      "agent_type": "oh-my-claudecode:executor",
+      "started_at": "2026-09-22T19:38:54.507Z",
+      "parent_mode": "none",
+      "status": "completed",
+      "completed_at": "2026-09-22T19:45:00.741Z",
+      "duration_ms": 366234
+    },
+    {
+      "agent_id": "a75fa30c9b41bc49a",
+      "agent_type": "oh-my-claudecode:executor",
+      "started_at": "2026-09-22T19:39:13.742Z",
+      "parent_mode": "none",
+      "status": "completed",
+      "completed_at": "2026-09-22T19:42:19.648Z",
+      "duration_ms": 185906
+    }
+  ],
+  "total_spawned": 3,
+  "total_completed": 27,
+  "total_failed": 0,
+  "last_updated": "2026-09-22T20:08:51.628Z"
+}
