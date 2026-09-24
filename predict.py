@@ -38,7 +38,21 @@ def predict_temperature(
 
 def _load_window_csv(csv_path):
     import pandas as pd
-    return pd.read_csv(csv_path).values.astype("float32")
+
+    df = pd.read_csv(csv_path)
+    if "Date Time" in df.columns:
+        df = df.drop(columns=["Date Time"])
+
+    # Ensure only numeric feature columns remain; the model expects the same
+    # feature order used during training, without any date or index metadata.
+    numeric_df = df.apply(pd.to_numeric, errors="coerce")
+    if numeric_df.isna().any().any():
+        bad_cols = numeric_df.columns[numeric_df.isna().any()].tolist()
+        raise ValueError(
+            "Window CSV contains non-numeric values. "
+            f"Check the following columns: {bad_cols}"
+        )
+    return numeric_df.values.astype("float32")
 
 
 def main():
