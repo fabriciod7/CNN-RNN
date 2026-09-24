@@ -6,13 +6,18 @@ from keras import layers
 DEFAULT_INPUT_SHAPE = (96, 96, 3)
 DEFAULT_N_CLASSES = 7
 DEFAULT_FILTERS = (32, 64, 128)
-DEFAULT_DROPOUT = 0.4
+DEFAULT_DROPOUT = 0.5
 
 
 def conv_block(x, filters: int):
     for _ in range(2):
         x = layers.Conv2D(
-            filters, 3, strides=1, padding="same", kernel_initializer="he_normal"
+            filters,
+            3,
+            strides=1,
+            padding="same",
+            kernel_initializer="he_normal",
+            kernel_regularizer=keras.regularizers.l2(1e-4),
         )(x)
         x = layers.BatchNormalization()(x)
         x = layers.Activation("relu")(x)

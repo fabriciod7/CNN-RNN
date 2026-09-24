@@ -39,15 +39,23 @@ def train_fold(
     models_dir = Path(models_dir)
     models_dir.mkdir(parents=True, exist_ok=True)
     model.compile(
-        optimizer=keras.optimizers.Adam(1e-3),
+        optimizer=keras.optimizers.Adam(5e-4),
         loss="sparse_categorical_crossentropy",
         metrics=["accuracy"],
     )
     callbacks = [
         keras.callbacks.EarlyStopping(
-            monitor="val_loss", patience=8, restore_best_weights=True
+            monitor="val_loss",
+            patience=10,
+            restore_best_weights=True,
+            min_delta=1e-4,
         ),
-        keras.callbacks.ReduceLROnPlateau(monitor="val_loss", factor=0.5, patience=4),
+        keras.callbacks.ReduceLROnPlateau(
+            monitor="val_loss",
+            factor=0.5,
+            patience=5,
+            min_lr=1e-6,
+        ),
         keras.callbacks.ModelCheckpoint(
             str(models_dir / f"cnn_fold{fold}.keras"), save_best_only=True
         ),
