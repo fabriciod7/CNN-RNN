@@ -14,14 +14,14 @@
   ],
   "dev_size": 8488,
   "test_size": 1527,
-  "best_fold": 4,
+  "best_fold": 3,
   "folds": [
     {
       "fold": 1,
       "train_size": 6774,
       "val_size": 1714,
-      "epochs_run": 10,
-      "best_val_loss": 1.2300745248794556,
+      "epochs_run": 60,
+      "best_val_loss": 1.206846833229065,
       "class_weight": {
         "0": 4.263058527375708,
         "1": 2.665879574970484,
@@ -36,8 +36,8 @@
       "fold": 2,
       "train_size": 6804,
       "val_size": 1684,
-      "epochs_run": 15,
-      "best_val_loss": 1.088741660118103,
+      "epochs_run": 35,
+      "best_val_loss": 1.0804613828659058,
       "class_weight": {
         "0": 4.207792207792208,
         "1": 2.722689075630252,
@@ -52,8 +52,8 @@
       "fold": 3,
       "train_size": 6801,
       "val_size": 1687,
-      "epochs_run": 29,
-      "best_val_loss": 1.0355150699615479,
+      "epochs_run": 34,
+      "best_val_loss": 1.0001972913742065,
       "class_weight": {
         "0": 4.2800503461296415,
         "1": 2.7138866719872308,
@@ -68,8 +68,8 @@
       "fold": 4,
       "train_size": 6816,
       "val_size": 1672,
-      "epochs_run": 45,
-      "best_val_loss": 0.9749889373779297,
+      "epochs_run": 25,
+      "best_val_loss": 1.071876883506775,
       "class_weight": {
         "0": 4.386100386100386,
         "1": 2.742857142857143,
@@ -84,8 +84,8 @@
       "fold": 5,
       "train_size": 6757,
       "val_size": 1731,
-      "epochs_run": 11,
-      "best_val_loss": 1.1792103052139282,
+      "epochs_run": 34,
+      "best_val_loss": 1.1089818477630615,
       "class_weight": {
         "0": 4.618591934381408,
         "1": 2.6888181456426583,
