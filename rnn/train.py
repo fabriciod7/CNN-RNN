@@ -24,8 +24,8 @@ DEFAULT_MODELS_DIR = REPO_ROOT / "models"
 DEFAULT_REPORTS_DIR = REPO_ROOT / "reports"
 
 SEED = 42
-EPOCHS = 40
-PATIENCE = 5
+EPOCHS = 50
+PATIENCE = 8
 MODEL_NAMES = ("dense", "lstm", "gru")
 EXPORT_ALIASES = {"lstm": "rnn_jena_lstm.keras", "gru": "rnn_jena_gru.keras"}
 
@@ -92,7 +92,7 @@ def run(
     batch_size: int = BATCH_SIZE,
     input_width: int = INPUT_WIDTH,
     horizon: int = HORIZON,
-    use_time_features: bool = False,
+    use_time_features: bool = True,
     models_dir: Path | str = DEFAULT_MODELS_DIR,
     reports_dir: Path | str = DEFAULT_REPORTS_DIR,
     norm_path: Path | str = DEFAULT_NORM_PATH,
@@ -141,7 +141,9 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--batch-size", type=int, default=BATCH_SIZE)
     parser.add_argument("--input-width", type=int, default=INPUT_WIDTH)
     parser.add_argument("--horizon", type=int, default=HORIZON)
-    parser.add_argument("--time-features", action="store_true")
+    parser.add_argument("--time-features", action="store_true", help="Enable cyclical time features for stronger temporal context.")
+    parser.add_argument("--no-time-features", action="store_false", dest="time_features")
+    parser.set_defaults(time_features=True)
     return parser.parse_args(argv)
 
 
