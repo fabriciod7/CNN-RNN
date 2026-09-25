@@ -295,7 +295,7 @@ def evaluate_all(
     data_path: Path | str = DEFAULT_DATA_PATH,
     models_dir: Path | str = DEFAULT_MODELS_DIR,
     reports_dir: Path | str = DEFAULT_REPORTS_DIR,
-    use_time_features: bool = False,
+    use_time_features: bool = True,
 ) -> pd.DataFrame:
     keras.utils.set_random_seed(SEED)
 
@@ -349,7 +349,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--data-path", default=str(DEFAULT_DATA_PATH))
     parser.add_argument("--models-dir", default=str(DEFAULT_MODELS_DIR))
     parser.add_argument("--reports-dir", default=str(DEFAULT_REPORTS_DIR))
-    parser.add_argument("--time-features", action="store_true")
+    parser.add_argument("--time-features", action="store_true", default=True)
+    parser.add_argument("--no-time-features", action="store_false", dest="time_features")
     parser.add_argument("--walk-forward", action="store_true")
     parser.add_argument("--walk-forward-cell", choices=("lstm", "gru", "dense"), default="lstm")
     parser.add_argument("--walk-forward-splits", type=int, default=5)
