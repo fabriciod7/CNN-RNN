@@ -1,5 +1,11 @@
 from __future__ import annotations
 
+"""Evaluation and comparison utilities for the RNN forecasting models.
+
+These routines measure MAE/RMSE against a persistence baseline, plot diagnostics,
+and export a model comparison table for reporting.
+"""
+
 import argparse
 import json
 from pathlib import Path
@@ -54,6 +60,7 @@ def figures_dir(reports_dir: Path | str = DEFAULT_REPORTS_DIR) -> Path:
 
 
 def collect_predictions(model: keras.Model, dataset) -> tuple[np.ndarray, np.ndarray]:
+    """Extract all targets and model predictions from a Keras time-series dataset."""
     y_true = np.concatenate([np.asarray(targets) for _, targets in dataset])
     y_pred = model.predict(dataset, verbose=0).reshape(-1)
     return y_true, y_pred
@@ -74,6 +81,7 @@ def evaluate_model(
     std: pd.Series,
     target_col: str = TARGET_COLUMN,
 ) -> tuple[dict[str, float], np.ndarray, np.ndarray]:
+    """Denormalize outputs and compute the main regression metrics in physical units."""
     y_true, y_pred = collect_predictions(model, dataset)
     y_true_c = denormalize(y_true, mean, std, target_col)
     y_pred_c = denormalize(y_pred, mean, std, target_col)

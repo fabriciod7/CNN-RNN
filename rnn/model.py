@@ -1,5 +1,11 @@
 from __future__ import annotations
 
+"""Model definitions for the Jena temperature forecasting task.
+
+The supported architectures are a dense baseline, an LSTM, and a GRU. All of them
+accept a fixed-length multivariate window and output a single 24-hour-ahead prediction.
+"""
+
 from typing import Sequence
 
 import keras
@@ -17,6 +23,7 @@ def build_rnn(
     dropout: float = 0.2,
     recurrent_dropout: float = 0.15,
 ) -> keras.Model:
+    """Build a recurrent network that scans the multivariate input window and predicts the target value."""
     Cell = layers.LSTM if cell == "lstm" else layers.GRU
     regularizer = keras.regularizers.l2(REGULARIZATION)
     inputs = keras.Input(shape=input_shape)

@@ -1,5 +1,13 @@
 from __future__ import annotations
 
+"""Utilities for loading HAM10000 images and preparing grouped train/validation splits.
+
+This module centralizes the dataset access logic used by the CNN pipeline:
+- locate image files referenced by the metadata CSV,
+- encode class labels numerically,
+- build group-aware folds that avoid data leakage across lesion IDs.
+"""
+
 import json
 from pathlib import Path
 
@@ -25,9 +33,11 @@ SEED = 42
 
 
 def index_image_paths(data_dir: Path | str = DEFAULT_DATA_DIR) -> dict[str, Path]:
+    """Map each image ID to its actual path in the dataset directory."""
     paths: dict[str, Path] = {}
     for path in sorted(Path(data_dir).rglob("*")):
         if path.suffix.lower() in IMAGE_EXTENSIONS:
+            # Use stem to match metadata IDs like "ISIC_0024318" with filename variants.
             paths.setdefault(path.stem, path)
     return paths
 
@@ -52,6 +62,7 @@ def load_metadata(data_dir: Path | str = DEFAULT_DATA_DIR) -> pd.DataFrame:
 
 
 def encode_labels(df: pd.DataFrame, label_column: str = LABEL_COLUMN) -> tuple[np.ndarray, list[str]]:
+    """Convert textual disease labels to integer class indices for sparse categorical loss."""
     classes = sorted(df[label_column].astype(str).unique())
     lookup = {name: index for index, name in enumerate(classes)}
     labels = df[label_column].astype(str).map(lookup).to_numpy(dtype="int64")
@@ -71,6 +82,7 @@ def load_dataset(
     data_dir: Path | str = DEFAULT_DATA_DIR,
     image_size: tuple[int, int] = DEFAULT_IMAGE_SIZE,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray, list[str]]:
+    """Load all images and metadata, returning arrays for model training."""
     df = load_metadata(data_dir)
     labels, classes = encode_labels(df)
     images = load_images(df[PATH_COLUMN].tolist(), image_size)

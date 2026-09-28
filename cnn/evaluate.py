@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+"""Evaluation utilities for the CNN classifier: metrics, confusion matrix, and capacity analysis."""
+
 import argparse
 import json
 from pathlib import Path
@@ -47,6 +49,7 @@ CAPACITY_CONFIGS = (
 
 
 def predict_proba(model: keras.Model, X, batch_size: int = 64) -> np.ndarray:
+    """Return class probabilities for a batch of images, used by metric and evaluation routines."""
     return model.predict(X, batch_size=batch_size, verbose=0)
 
 

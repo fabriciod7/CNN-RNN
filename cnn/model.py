@@ -1,5 +1,11 @@
 from __future__ import annotations
 
+"""CNN architecture used for the HAM10000 skin lesion classifier.
+
+The model combines small convolutional blocks with progressive downsampling,
+then reduces the feature map via global average pooling before the final softmax head.
+"""
+
 import keras
 from keras import layers
 
@@ -10,6 +16,7 @@ DEFAULT_DROPOUT = 0.5
 
 
 def conv_block(x, filters: int):
+    """Create a repeated convolution + normalization + activation block."""
     for _ in range(2):
         x = layers.Conv2D(
             filters,

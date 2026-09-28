@@ -1,5 +1,11 @@
 from __future__ import annotations
 
+"""Dataset preparation utilities for the Jena Climate forecasting pipeline.
+
+The process includes reading the raw series, engineering cyclical temporal features,
+normalizing the training statistics, and generating fixed-length sliding windows for the RNN.
+"""
+
 import json
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -35,6 +41,7 @@ def load_dataframe(
     data_path: Path | str = DEFAULT_DATA_PATH,
     resample_hourly: bool = True,
 ) -> pd.DataFrame:
+    """Read the raw Jena dataset and keep it sorted by timestamp for time-aware splitting."""
     path = Path(data_path)
     if not path.exists():
         raise FileNotFoundError(
@@ -58,6 +65,7 @@ def clean_wind_values(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def add_time_features(df: pd.DataFrame) -> pd.DataFrame:
+    """Add cyclical seasonal features so the model can learn daily and annual time patterns."""
     out = df.copy()
     wind_speed = out.pop(WIND_SPEED_COLUMN)
     max_wind_speed = out.pop(MAX_WIND_SPEED_COLUMN)
@@ -93,6 +101,7 @@ def normalize(
     mean: pd.Series | None = None,
     std: pd.Series | None = None,
 ) -> tuple[list[pd.DataFrame], pd.Series, pd.Series]:
+    """Standardize features using training-set statistics only to avoid temporal leakage."""
     # Statistics come from train only, otherwise the future leaks into the past.
     if mean is None or std is None:
         mean, std = train_df.mean(), train_df.std()
@@ -244,6 +253,7 @@ def prepare_datasets(
     norm_path: Path | str | None = DEFAULT_NORM_PATH,
     verify: bool = True,
 ) -> WindowedDataset:
+    """Build the chronological train/validation/test splits and convert them to Keras window datasets."""
     df = load_dataframe(data_path)
     if use_time_features:
         df = add_time_features(df)

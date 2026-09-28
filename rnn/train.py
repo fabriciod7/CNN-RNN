@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+"""Training script for the Jena forecasting models: dense baseline, LSTM, and GRU."""
+
 import argparse
 import json
 import time
@@ -46,6 +48,7 @@ def train_model(
     epochs: int = EPOCHS,
     patience: int = PATIENCE,
 ) -> tuple[keras.callbacks.History, float]:
+    """Train a single model while monitoring validation loss and keeping the best checkpoint."""
     checkpoint_path = Path(checkpoint_path)
     checkpoint_path.parent.mkdir(parents=True, exist_ok=True)
     callbacks = [
@@ -97,6 +100,7 @@ def run(
     reports_dir: Path | str = DEFAULT_REPORTS_DIR,
     norm_path: Path | str = DEFAULT_NORM_PATH,
 ) -> dict[str, dict]:
+    """Train every selected model and save their histories plus exported checkpoints."""
     keras.utils.set_random_seed(SEED)
 
     if data is None:

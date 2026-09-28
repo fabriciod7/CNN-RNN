@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+"""Training loop for the grouped HAM10000 cross-validation CNN pipeline."""
+
 import argparse
 import json
 import shutil
@@ -36,6 +38,7 @@ def train_fold(
     batch_size: int = DEFAULT_BATCH_SIZE,
     models_dir: Path | str = DEFAULT_MODELS_DIR,
 ):
+    """Train one fold with early stopping and checkpointing for the best validation state."""
     models_dir = Path(models_dir)
     models_dir.mkdir(parents=True, exist_ok=True)
     model.compile(
@@ -103,6 +106,7 @@ def run_cross_validation(
     filters: tuple[int, ...] = DEFAULT_FILTERS,
     dropout: float = DEFAULT_DROPOUT,
 ) -> dict:
+    """Run grouped cross-validation and export the best-performing fold as the final model."""
     models_dir = Path(models_dir)
     reports_dir = Path(reports_dir)
     X, y, groups, classes = load_dataset(data_dir, image_size)
