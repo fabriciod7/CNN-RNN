@@ -1,0 +1,309 @@
+<!doctype html><html lang='es'><head><meta charset='utf-8'><style>
+@page { size: A4; margin: 1.6cm 1.7cm; }
+body { font-family: Calibri, 'Segoe UI', Arial, sans-serif; font-size: 10pt; line-height: 1.38; color: #111; text-align: justify; }
+h1 { color: #1f3864; font-size: 16pt; margin: 0 0 6px; }
+h2 { color: #1f3864; font-size: 13pt; border-bottom: 1.5px solid #1f3864; padding-bottom: 2px; margin: 14px 0 6px; }
+h3 { font-size: 11pt; margin: 10px 0 4px; }
+p { margin: 4px 0; } ul, ol { margin: 4px 0; padding-left: 20px; } li { margin: 2px 0; }
+code { font-family: Consolas, monospace; font-size: 9pt; }
+table { border-collapse: collapse; width: 100%; margin: 6px 0; font-size: 9pt; text-align: left; page-break-inside: avoid; }
+th, td { border: 1px solid #999; padding: 3px 6px; } th { background: #dde3ee; text-align: center; }
+img { display: block; margin: 4px auto 0; } img.wide { width: 100%; } img.cm { width: 52%; }
+</style></head><body><h1>Informe Técnico — TP Integrador Redes Neuronales (Keras CNN–RNN)</h1>
+<p><strong>Materia:</strong> Inteligencia Artificial — Lic. en Sistemas de Información (FCyT–UADER)<br />
+<strong>Integrantes:</strong> [APELLIDO 1, Nombre] — [APELLIDO 2, Nombre]<br />
+<strong>Fecha de entrega:</strong> 30 de septiembre de 2026</p>
+<h2>1. Introducción</h2>
+<p>Se diseñaron, implementaron y evaluaron con Keras dos arquitecturas que explotan la estructura de los datos:</p>
+<ul>
+<li><strong>Espacio — CNN:</strong> clasificación de lesiones cutáneas en 7 clases (<code>akiec</code>, <code>bcc</code>, <code>bkl</code>, <code>df</code>, <code>mel</code>, <code>nv</code>, <code>vasc</code>) sobre <strong>HAM10000</strong> (10 015 dermatoscopías, 96×96×3, normalizadas a [0, 1]). El dataset es muy desbalanceado (<code>nv</code> ≈ 67 %, <code>df</code> ≈ 1 %) y contiene varias imágenes de una misma lesión (<code>lesion_id</code>).</li>
+<li><strong>Tiempo — RNN:</strong> pronóstico multivariado de la temperatura <code>T (degC)</code> a <strong>+24 h</strong> a partir de una ventana de <strong>72 h</strong> sobre <strong>Jena Climate 2009–2016</strong> (registros cada 10 min submuestreados a 1 h). Se usan 19 variables: 11 meteorológicas, el viento convertido a vector (<code>wx</code>, <code>wy</code>, <code>max wx</code>, <code>max wy</code>) y codificación cíclica seno/coseno de la hora del día y del día del año.</li>
+</ul>
+<h2>2. Módulo CNN</h2>
+<h3>2.1 Arquitectura</h3>
+<table>
+<thead>
+<tr>
+<th>Etapa</th>
+<th>Operación</th>
+<th>Salida</th>
+<th>Parámetros</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Aumentación (solo train)</td>
+<td>RandomFlip(h+v), RandomRotation(0.1), RandomZoom(0.1)</td>
+<td>96×96×3</td>
+<td>0</td>
+</tr>
+<tr>
+<td>Bloque 1</td>
+<td>2 × [Conv2D 32, 3×3, s=1, <code>same</code> → BN → ReLU] → MaxPool 2×2, s=2</td>
+<td>48×48×32</td>
+<td>10 400</td>
+</tr>
+<tr>
+<td>Bloque 2</td>
+<td>2 × [Conv2D 64 → BN → ReLU] → MaxPool</td>
+<td>24×24×64</td>
+<td>55 936</td>
+</tr>
+<tr>
+<td>Bloque 3</td>
+<td>2 × [Conv2D 128 → BN → ReLU] → MaxPool</td>
+<td>12×12×128</td>
+<td>222 464</td>
+</tr>
+<tr>
+<td>Cabeza</td>
+<td>GlobalAveragePooling2D → Dropout(0.5) → Dense(7, softmax)</td>
+<td>7</td>
+<td>903</td>
+</tr>
+<tr>
+<td><strong>Total</strong></td>
+<td></td>
+<td></td>
+<td><strong>289 703</strong> (288 807 entrenables)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Convolución, padding y stride.</strong> La salida de cada capa es <code>o = ⌊(i + 2p − k)/s⌋ + 1</code>. Con <code>k=3</code>, <code>s=1</code> y <code>padding="same"</code> (<code>p=1</code>) se preserva la resolución (<code>o = i</code>), de modo que los bordes de la lesión se procesan igual que el centro; el pooling <code>k=2, s=2</code> la reduce a la mitad: 96 → 48 → 24 → 12. Cada Conv2D tiene <code>k·k·C_in·C_out + C_out</code> parámetros (p. ej. 3·3·64·128+128 = 73 856): gracias a la <strong>conectividad local y los pesos compartidos</strong>, el mismo detector de bordes/texturas recorre toda la imagen. Una capa densa conectando la entrada 96·96·3 a sólo 128 neuronas ya requeriría 3,5 M de parámetros, 12 veces más que toda la red.</p>
+<p><strong>Campo receptivo.</strong> Con <code>r_l = r_{l−1} + (k−1)·j_{l−1}</code> y <code>j_l = j_{l−1}·s</code>, el campo receptivo crece 3 → 5 → 6 → 10 → 14 → 16 → 24 → 32 → <strong>36 px</strong>: cada activación final "ve" un 37 % del lado de la imagen, suficiente para capturar la forma y el borde de la lesión; el Global Average Pooling integra luego toda la superficie.</p>
+<p><strong>Pooling y equivarianza.</strong> La convolución es equivariante a traslaciones (desplazar la entrada desplaza el mapa de características); MaxPool aporta invarianza local parcial, ya que un corrimiento menor que la ventana no modifica el máximo, y reduce la resolución y el costo de las capas siguientes. Usar <strong>GAP en lugar de Flatten</strong> reduce la cabeza de 12·12·128·7 = 129 024 a 903 parámetros y elimina la dependencia de la posición absoluta.</p>
+<p><strong>Activaciones y estabilidad del gradiente.</strong> En las capas ocultas se usa <strong>ReLU</strong> (derivada 1 en la zona activa: no satura ni atenúa el gradiente al propagarlo por 6 capas) con <strong>inicialización He</strong> (<code>Var(W) = 2/n_in</code>), que conserva la varianza de las activaciones bajo ReLU. <strong>BatchNormalization</strong> normaliza la preactivación de cada canal, estabiliza su distribución entre pasos y permite tasas de aprendizaje mayores. En la salida, <strong>softmax</strong> convierte los logits en una distribución de probabilidad sobre las 7 clases; junto con la <strong>entropía cruzada categórica</strong> equivale a maximizar la log-verosimilitud y produce el gradiente simple <code>ŷ − y</code>.</p>
+<p><strong>Regularización.</strong> Dropout 0.5 antes de la capa de salida, L2 (λ = 1e-4) en los núcleos convolucionales, aumentación geométrica (las dermatoscopías no tienen orientación canónica) y EarlyStopping.</p>
+<h3>2.2 Hiperparámetros</h3>
+<table>
+<thead>
+<tr>
+<th>Hiperparámetro</th>
+<th>Valor</th>
+<th>Justificación</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Optimizador / LR inicial</td>
+<td>Adam, 5e-4</td>
+<td>Reducido desde 1e-3 (primera iteración) para amortiguar la oscilación de la validación junto con BN</td>
+</tr>
+<tr>
+<td>Scheduler</td>
+<td>ReduceLROnPlateau (×0.5, paciencia 5, mín. 1e-6)</td>
+<td>Afina el mínimo cuando la validación se estanca</td>
+</tr>
+<tr>
+<td>Batch size</td>
+<td>32</td>
+<td>Compromiso entre memoria y ruido estocástico útil para BN</td>
+</tr>
+<tr>
+<td>Épocas</td>
+<td>máx. 60; EarlyStopping (paciencia 10, restaura mejores pesos)</td>
+<td>Épocas ejecutadas: 60/35/34/25/34; mejor época media: 28.8</td>
+</tr>
+<tr>
+<td>Filtros</td>
+<td>(32, 64, 128)</td>
+<td>Se duplican al reducir la resolución a la mitad (costo por bloque ≈ constante)</td>
+</tr>
+<tr>
+<td>Desbalance</td>
+<td><code>class_weight="balanced"</code> calculado <strong>solo con el train de cada fold</strong></td>
+<td>Pesos de 0.21 (<code>nv</code>) a ≈ 12 (<code>df</code>); usar todo el dataset filtraría la distribución de validación</td>
+</tr>
+</tbody>
+</table>
+<h3>2.3 Partición sin fuga de información</h3>
+<p>Una partición aleatoria pondría imágenes de la misma lesión en train y validación, y la red podría "reconocer la lesión" (color de piel, vello, reglas o marcas del dermatoscopio) en lugar de aprender la clase. Por eso: (1) <code>GroupShuffleSplit</code> separa un <strong>holdout de test del 15 %</strong> por <code>lesion_id</code> (8 488 imágenes de desarrollo / 1 527 de test); (2) sobre desarrollo se aplica <strong><code>StratifiedGroupKFold</code> (k = 5)</strong>, que mantiene cada lesión en un solo fold y preserva la proporción de clases; (3) un <code>assert</code> verifica en ejecución que los grupos de train y validación sean disjuntos. El test se evalúa <strong>una sola vez</strong>, promediando las probabilidades de los 5 modelos de fold (<em>ensemble</em>), de modo que nunca se usa para elegir entre ellos.</p>
+<h3>2.4 Resultados</h3>
+<p>Por el desbalance, <em>accuracy</em> no es informativa (predecir siempre <code>nv</code> da 67 %): se reportan <strong>balanced accuracy</strong> (media de los <em>recalls</em>), <strong>F1 macro</strong>, <strong>ROC-AUC one-vs-rest</strong> y el <strong>recall de melanoma</strong>, la clase clínicamente crítica.</p>
+<table>
+<thead>
+<tr>
+<th>Partición</th>
+<th>Balanced acc.</th>
+<th>F1 macro</th>
+<th>ROC-AUC (OvR)</th>
+<th>Recall <code>mel</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Fold 1</td>
+<td>0.601</td>
+<td>0.466</td>
+<td>0.898</td>
+<td>0.554</td>
+</tr>
+<tr>
+<td>Fold 2</td>
+<td>0.449</td>
+<td>0.385</td>
+<td>0.871</td>
+<td>0.414</td>
+</tr>
+<tr>
+<td>Fold 3</td>
+<td>0.558</td>
+<td>0.479</td>
+<td>0.887</td>
+<td>0.753</td>
+</tr>
+<tr>
+<td>Fold 4</td>
+<td>0.410</td>
+<td>0.346</td>
+<td>0.885</td>
+<td>0.594</td>
+</tr>
+<tr>
+<td>Fold 5</td>
+<td>0.468</td>
+<td>0.400</td>
+<td>0.856</td>
+<td>0.442</td>
+</tr>
+<tr>
+<td><strong>CV: media ± σ</strong></td>
+<td><strong>0.497 ± 0.071</strong></td>
+<td><strong>0.415 ± 0.050</strong></td>
+<td><strong>0.880 ± 0.015</strong></td>
+<td><strong>0.551 ± 0.121</strong></td>
+</tr>
+<tr>
+<td><strong>Test holdout</strong></td>
+<td><strong>0.527</strong></td>
+<td><strong>0.451</strong></td>
+<td><strong>0.898</strong></td>
+<td><strong>0.618</strong></td>
+</tr>
+</tbody>
+</table>
+<p><img class="wide" alt="Curvas de pérdida por fold" src="../reports/figures/cnn_loss_curves.png" /></p>
+<p><em>Figura 1. Pérdida de entrenamiento y validación por fold.</em></p>
+<p><img class="cm" alt="Matriz de confusión en test" src="../reports/figures/cnn_confusion_matrix_test.png" /></p>
+<p><em>Figura 2. Matriz de confusión normalizada por fila en el test holdout.</em></p>
+<h3>2.5 Análisis de sesgo y varianza</h3>
+<ul>
+<li><strong>Generalización y ausencia de fuga.</strong> La métrica de test (0.527) cae dentro del intervalo de CV (0.497 ± 0.071) y el AUC coincide (0.898 vs 0.880). Si la red memorizara artefactos visuales de lesiones repetidas, el rendimiento sobre lesiones nunca vistas sería claramente inferior al de CV; no ocurre.</li>
+<li><strong>Sesgo (underfitting) dominante.</strong> En la mejor época, la <em>accuracy</em> de train (0.52–0.62) es similar a la de validación (0.56–0.63) y la pérdida de train sigue bajando lentamente (≈ 1.0 al final). La red no llega a ajustar bien ni siquiera el entrenamiento: el error es principalmente de sesgo, atribuible a la baja resolución (96×96 pierde detalle de textura) y a la capacidad moderada (≈ 290 k parámetros). La pérdida de train aparece a veces por encima de la de validación porque se calcula con aumentación, dropout, penalización L2 y pesos de clase, que la inflan; la de validación no los incluye.</li>
+<li><strong>Varianza baja en el modelo, alta en las clases minoritarias.</strong> No hay brecha creciente train–val (sin overfitting sostenido): EarlyStopping corta 10 épocas después del mínimo y restaura esos pesos. La validación es ruidosa, con picos en las primeras épocas (fold 4: 3.7) por la actualización de las estadísticas de BN con LR alto y por la escasez de muestras minoritarias (≈ 20–30 imágenes de <code>df</code> o <code>vasc</code> por fold). Esa escasez explica la varianza entre folds: σ del recall <code>bcc</code> = 0.23 (0.00 en el fold 4, 0.67 en el 5) frente a σ = 0.03 en <code>bkl</code>. El AUC, que mide la capacidad de ordenar y no depende del umbral de <code>argmax</code>, es estable (σ = 0.015): la representación aprendida es consistente y lo que varía es la frontera de decisión en las clases raras.</li>
+<li><strong>Errores sistemáticos.</strong> La Figura 2 muestra confusiones clínicamente plausibles entre clases pigmentadas: <code>mel</code>→<code>bkl</code> (24 %), <code>df</code>→<code>bkl</code> (40 %) y <code>nv</code>→<code>mel</code> (15 %). Por los pesos de clase, el recall de <code>nv</code> baja a 0.65 a cambio de detectar el 62 % de los melanomas, un intercambio deseable en un contexto de cribado.</li>
+</ul>
+<h2>3. Módulo RNN</h2>
+<h3>3.1 Elección de la celda y BPTT</h3>
+<p>En una RNN simple, <code>h_t = tanh(W_h h_{t−1} + W_x x_t + b)</code>, y el gradiente propagado por BPTT a lo largo de <code>T</code> pasos es un producto de jacobianos:</p>
+<p><code>∂h_T/∂h_k = ∏_{t=k+1}^{T} diag(tanh'(a_t)) · W_h</code></p>
+<p>Si el radio espectral de <code>W_h</code> (por <code>|tanh'| ≤ 1</code>) es &lt; 1, la norma decae exponencialmente (<strong>desvanecimiento</strong>) y la red no aprende dependencias de 24–72 h; si es &gt; 1, crece exponencialmente (<strong>explosión</strong>). Con ventanas de 72 pasos, la RNN simple no es viable.</p>
+<ul>
+<li><strong>LSTM</strong> actualiza la celda de forma <strong>aditiva</strong>: <code>c_t = f_t ⊙ c_{t−1} + i_t ⊙ c̃_t</code>, por lo que <code>∂c_t/∂c_{t−1} = diag(f_t)</code>. Si la compuerta de olvido <code>f_t ≈ 1</code>, el gradiente atraviesa el tiempo casi sin atenuarse (<em>constant error carousel</em>), y la red aprende cuándo recordar y cuándo olvidar.</li>
+<li><strong>GRU</strong> combina olvido y entrada en una compuerta de actualización: <code>h_t = (1 − z_t) ⊙ h_{t−1} + z_t ⊙ h̃_t</code>, con <code>∂h_t/∂h_{t−1} ≈ diag(1 − z_t)</code>: el mismo camino aditivo con 3 bloques de pesos en lugar de 4 (≈ 25 % menos parámetros).</li>
+<li><strong>Activaciones:</strong> sigmoide en las compuertas (rango [0, 1], interpretable como la fracción de información que pasa); tanh en el candidato y el estado (rango [−1, 1], centrada en cero, acota el estado); ReLU en la capa densa intermedia y <strong>salida lineal</strong>, porque se trata de una regresión no acotada.</li>
+<li><strong>Explosión:</strong> las compuertas atacan el desvanecimiento, pero no impiden la explosión; por eso se usa <strong>gradient clipping</strong> <code>clipnorm = 1.0</code>, que reescala <code>g ← g·1/‖g‖</code> cuando la norma supera 1, conservando la dirección.</li>
+</ul>
+<p>Se entrenaron <strong>LSTM y GRU</strong> con la misma arquitectura y se eligió la de mejor rendimiento. Arquitectura: <code>Input(72×19) → Celda(64, return_sequences) → Celda(64) → Dense(32, ReLU) → Dense(1)</code>, con dropout de entrada 0.2 y dropout recurrente 0.15 (máscara fija en todos los pasos) y L2 = 1e-4 en los pesos de entrada y recurrentes.</p>
+<h3>3.2 Split cronológico y normalización</h3>
+<p>El split es <strong>estrictamente cronológico, sin mezclar: 70 % train (ene 2009 – ago 2014) / 20 % validación (ago 2014 – mar 2016) / 10 % test (mar – dic 2016)</strong>. La media y el desvío de normalización se ajustan <strong>solo con train</strong> y se guardan en <code>models/rnn_norm.json</code> para la inferencia. Las ventanas se generan dentro de cada partición, así que ninguna cruza una frontera: el target de cada ventana es <code>T</code> en la posición <code>72 + 24 − 1</code>, y se verifica la alineación de los <em>timestamps</em>. Solo se mezclan las ventanas del conjunto de train entre sí, lo que no filtra información del futuro porque cada ventana es un par (pasado → futuro) autocontenido.</p>
+<h3>3.3 Hiperparámetros</h3>
+<table>
+<thead>
+<tr>
+<th>Hiperparámetro</th>
+<th>Valor</th>
+<th>Justificación</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Optimizador</td>
+<td>Adam, LR 1e-4, <code>clipnorm=1.0</code></td>
+<td>LR bajo para una convergencia estable del BPTT a 72 pasos; el <em>clipping</em> evita la explosión</td>
+</tr>
+<tr>
+<td>Pérdida / métrica</td>
+<td>MSE final (<em>many-to-one</em>) / MAE</td>
+<td>Se minimiza el error del único valor pronosticado; MSE penaliza más los errores grandes (picos de temperatura); MAE se interpreta en °C</td>
+</tr>
+<tr>
+<td>Batch / épocas</td>
+<td>256 / máx. 50, EarlyStopping (paciencia 8)</td>
+<td>Ventanas muy correlacionadas: un batch grande estabiliza el gradiente</td>
+</tr>
+<tr>
+<td>Ventana / horizonte</td>
+<td>72 h / +24 h</td>
+<td>Tres ciclos diarios completos de contexto</td>
+</tr>
+<tr>
+<td>Unidades</td>
+<td>(64, 64) + Dense 32</td>
+<td>Suficiente para 19 variables con ≈ 43–57 k parámetros</td>
+</tr>
+</tbody>
+</table>
+<h3>3.4 Resultados en test</h3>
+<table>
+<thead>
+<tr>
+<th>Modelo</th>
+<th>MAE (°C)</th>
+<th>RMSE (°C)</th>
+<th>Parámetros</th>
+<th>Épocas</th>
+<th>Tiempo</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Persistencia (<code>T(t+24) = T(t)</code>)</td>
+<td>2.371</td>
+<td>3.086</td>
+<td>0</td>
+<td>—</td>
+<td>—</td>
+</tr>
+<tr>
+<td>Denso (Flatten → Dense 64 → 1)</td>
+<td>2.247</td>
+<td>2.842</td>
+<td>87 681</td>
+<td>32</td>
+<td>107 s</td>
+</tr>
+<tr>
+<td>LSTM (64, 64)</td>
+<td>2.110</td>
+<td>2.664</td>
+<td>56 641</td>
+<td>50</td>
+<td>3 004 s</td>
+</tr>
+<tr>
+<td><strong>GRU (64, 64)</strong></td>
+<td><strong>2.062</strong></td>
+<td><strong>2.611</strong></td>
+<td><strong>43 393</strong></td>
+<td>50</td>
+<td>2 755 s</td>
+</tr>
+</tbody>
+</table>
+<p>La <strong>GRU</strong> es el mejor modelo: reduce el MAE un <strong>13.0 %</strong> respecto de la persistencia y un <strong>8.2 %</strong> respecto del denso, con la mitad de parámetros que este último. La mejora frente al denso, que ve la misma ventana pero aplanada y sin noción de orden, confirma que la recurrencia aprovecha la estructura secuencial.</p>
+<p><img class="wide" alt="Predicción GRU vs real" src="../reports/figures/rnn_gru_predictions.png" /></p>
+<p><em>Figura 3. Predicción a +24 h de la GRU frente al valor real (tramo de test).</em></p>
+<h3>3.5 Estabilidad predictiva y ajuste</h3>
+<ul>
+<li><strong>Curvas de aprendizaje.</strong> El <strong>denso sobreajusta</strong>: MSE de train 0.088 contra 0.145 de validación (normalizado), con una brecha que crece hasta la detención en la época 32. <strong>LSTM y GRU no muestran brecha</strong> (0.137/0.138 y 0.143/0.133), pero su mejor época fue la 48 y la 50 de 50: todavía mejoraban al alcanzar el límite. El diagnóstico es un <strong>leve underfitting por presupuesto de épocas</strong> (LR 1e-4) y no por capacidad; aumentar las épocas es la mejora inmediata. La regularización recurrente cumplió su función: no hay varianza excesiva.</li>
+<li><strong>Residuos.</strong> Son aproximadamente normales, con media −0.19 °C y σ = 2.60 °C: un sesgo sistemático despreciable (ligera sobreestimación).</li>
+<li><strong>Estabilidad temporal.</strong> El MAE mensual de la GRU oscila entre 1.5 °C (marzo) y 2.5 °C (julio y diciembre), sin deriva a lo largo de los 10 meses de test: el modelo no se degrada al alejarse del período de entrenamiento. El error aumenta en los meses de mayor variabilidad sinóptica. En la Figura 3 la predicción sigue el ciclo diario, pero suaviza los extremos y reacciona con retraso a los cambios bruscos de régimen (frentes, p. ej. 2–5 de abril), información que no está contenida en la ventana pasada de una sola estación.</li>
+</ul>
+<h2>4. Conclusiones</h2>
+<ol>
+<li><strong>La partición determina la validez de las métricas.</strong> Con la agrupación por <code>lesion_id</code> y el time split cronológico, test y validación coinciden (CNN: 0.527 vs 0.497 ± 0.071; RNN: sin deriva mensual), lo que confirma una evaluación honesta, sin fuga de información.</li>
+<li><strong>CNN:</strong> el diseño convolucional con padding <code>same</code>, pooling y GAP generaliza (AUC 0.90) con solo 290 k parámetros. Su límite es el <strong>sesgo</strong>, no el sobreajuste; la varianza se concentra en las clases con pocas lesiones. Mejoras posibles: mayor resolución de entrada, más profundidad o <em>transfer learning</em> y <em>focal loss</em> para las clases minoritarias.</li>
+<li><strong>RNN:</strong> las celdas con compuertas, más el <em>gradient clipping</em>, entrenan de forma estable sobre 72 pasos y superan a ambos baselines; la GRU logra el menor error con menos parámetros. Mejoras posibles: más épocas, horizonte multi-paso y variables exógenas (pronósticos regionales) para anticipar cambios de régimen.</li>
+</ol>
+<p><strong>Entregables:</strong> código en <code>cnn/</code>, <code>rnn/</code>, <code>predict.py</code> y <code>make_rnn_window.py</code>; modelos exportados en <code>models/</code> (<code>cnn_fold1..5.keras</code>, usados en <em>ensemble</em> para test e inferencia; <code>rnn_gru.keras</code>, <code>rnn_lstm.keras</code>, <code>rnn_dense.keras</code>; <code>cnn_classes.json</code> y <code>rnn_norm.json</code>); métricas y figuras en <code>reports/</code>.</p></body></html>
