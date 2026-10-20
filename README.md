@@ -1,14 +1,4 @@
-# TP Integrador — Redes Neuronales (CNN + RNN con Keras)
-
-**Materia:** Inteligencia Artificial — Lic. en Sistemas de Información  
-**Institución:** FCyT – UADER  
-**Entrega:** 30 de septiembre
-
----
-
 ## Descripción
-
-Este repositorio contiene la implementación del Trabajo Práctico Integrador de Redes Neuronales. Se desarrollan dos módulos:
 
 - **CNN** — clasificación de lesiones cutáneas sobre el dataset HAM10000 (7 clases), con partición por grupos (`lesion_id`) para evitar data leakage y validación cruzada estratificada (`StratifiedGroupKFold`).
 - **RNN (LSTM/GRU)** — pronóstico de temperatura a +24 h sobre el dataset Jena Climate, con split cronológico estricto y comparación contra baselines.
